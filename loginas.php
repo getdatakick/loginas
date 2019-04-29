@@ -19,7 +19,7 @@ class LoginAs extends Module
         $this->displayName = $this->l('Login As Customer');
         $this->description = $this->l('this module allows you to login as a customer');
         $this->controllers = ['login'];
-        $this->ps_versions_compliancy = array('min' => '1.6', 'max' => '1.6.999');
+        $this->ps_versions_compliancy = array('min' => '1.7', 'max' => _PS_VERSION_);
     }
 
     /**

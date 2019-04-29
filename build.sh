@@ -7,7 +7,7 @@ FILES+=("logo.png")
 MODULE_VERSION="$(sed -ne "s/\\\$this->version *= *['\"]\([^'\"]*\)['\"] *;.*/\1/p" ${CWD_BASENAME}.php)"
 MODULE_VERSION_FILE=`echo ${MODULE_VERSION} | sed -e "s/\./_/g"`;
 MODULE_VERSION=${MODULE_VERSION//[[:space:]]}
-ZIP_FILE="${CWD_BASENAME}-${MODULE_VERSION_FILE}.zip"
+ZIP_FILE="${CWD_BASENAME}-ps17-${MODULE_VERSION_FILE}.zip"
 
 echo "Going to zip ${CWD_BASENAME} version ${MODULE_VERSION}"
 
