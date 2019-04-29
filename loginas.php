@@ -23,7 +23,6 @@ class LoginAs extends Module
 
     /**
      * @return bool
-     * @throws Adapter_Exception
      * @throws PrestaShopDatabaseException
      * @throws PrestaShopException
      */
@@ -31,72 +30,10 @@ class LoginAs extends Module
     {
         return (
             parent::install() &&
-            $this->installTab() &&
             $this->registerHook('backOfficeHeader') &&
+            $this->registerHook('actionAdminCustomersListingResultsModifier') &&
             $this->registerHook('displayAdminCustomers')
         );
-    }
-
-    /**
-     * @return bool
-     * @throws Adapter_Exception
-     * @throws PrestaShopDatabaseException
-     * @throws PrestaShopException
-     */
-    public function uninstall()
-    {
-        $this->removeTab();
-        return parent::uninstall();
-    }
-
-    /**
-     * @return int
-     * @throws Adapter_Exception
-     * @throws PrestaShopDatabaseException
-     * @throws PrestaShopException
-     */
-    private function installTab()
-    {
-        $tab = new Tab();
-        $tab->active = 1;
-        $tab->class_name = 'AdminLoginAsBackend';
-        $tab->module = $this->name;
-        $tab->id_parent = $this->getTabParent();
-        $tab->name = array();
-        foreach (Language::getLanguages(true) as $lang) {
-            $tab->name[$lang['id_lang']] = 'Login As Customer';
-        }
-        return $tab->add();
-    }
-
-    /**
-     * @return bool
-     * @throws Adapter_Exception
-     * @throws PrestaShopDatabaseException
-     * @throws PrestaShopException
-     */
-    private function removeTab()
-    {
-        $tabId = Tab::getIdFromClassName('AdminLoginAsBackend');
-        if ($tabId) {
-            $tab = new Tab($tabId);
-            return $tab->delete();
-        }
-        return true;
-    }
-
-    /**
-     * @return int
-     * @throws PrestaShopDatabaseException
-     * @throws PrestaShopException
-     */
-    private function getTabParent()
-    {
-        $parent = Tab::getIdFromClassName('AdminCustomers');
-        if ($parent !== false) {
-            return $parent;
-        }
-        return 0;
     }
 
     /**
@@ -104,11 +41,21 @@ class LoginAs extends Module
      */
     public function hookBackOfficeHeader()
     {
-        if (Tools::getValue('controller') === 'AdminCustomers' && $this->hasPermission()) {
-            Media::addJsDef(['LOGIN_AS_URL' => $this->context->link->getAdminLink('AdminLoginAsBackend')]);
+        if (Tools::getValue('controller') === 'AdminCustomers') {
+            Media::addJsDef(['LOGIN_AS_URL' => $this->context->link->getModuleLink($this->name, 'login')]);
             $this->context->controller->addJquery();
             $this->context->controller->addJS($this->_path . '/views/js/customer-list.js');
         }
+    }
+
+    public function hookActionAdminCustomersListingResultsModifier($params)
+    {
+        $list = [];
+        foreach ($params['list'] as $item) {
+            $id = (int)$item['id_customer'];
+            $list[$id] = $this->getSecret($id);
+        }
+        Media::addJsDef(['LOGIN_AS_SECRETS' => $list]);
     }
 
     /**
@@ -116,32 +63,20 @@ class LoginAs extends Module
      * @return string
      * @throws PrestaShopException
      * @throws SmartyException
+     * @throws HTMLPurifier_Exception
      */
     public function hookDisplayAdminCustomers($params)
     {
-        if ($this->hasPermission()) {
-            $customerId = (int)$params['id_customer'];
-            $customer = new Customer($customerId);
-            $this->context->smarty->assign([
-                'customerName' => $customer->firstname . ' ' . $customer->lastname,
-                'loginAsUrl' => $this->context->link->getAdminLink('AdminLoginAsBackend', true) . "&id_customer=$customerId"
-            ]);
-            return $this->display(__FILE__, 'customer-form.tpl');
-        }
-    }
-
-    /**
-     * @return bool
-     * @throws PrestaShopDatabaseException
-     * @throws PrestaShopException
-     */
-    public function hasPermission()
-    {
-        if (is_null($this->access)) {
-            $access = Profile::getProfileAccess($this->context->employee->id_profile, Tab::getIdFromClassName('AdminLoginAsBackend'));
-            $this->access = isset($access['view']) && $access['view'];
-        }
-        return $this->access;
+        $customerId = (int)$params['id_customer'];
+        $customer = new Customer($customerId);
+        $this->context->smarty->assign([
+            'customerName' => $customer->firstname . ' ' . $customer->lastname,
+            'loginAsUrl' => $this->context->link->getModuleLink($this->name, 'login', [
+                'id_customer' => $customerId,
+                'secret' => $this->getSecret($customerId)
+            ], null, $customer->id_lang)
+        ]);
+        return $this->display(__FILE__, 'customer-form.tpl');
     }
 
     /**

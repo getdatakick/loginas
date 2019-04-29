@@ -20,7 +20,11 @@
                     $(this).find('th:last-child').before('<th>&nbsp;</th>');
                 });
                 $('.login-as-trigger').click(function () {
-                    window.open(window.LOGIN_AS_URL + '&id_customer=' + getCustomerId(this), '_blank');
+                    var id = getCustomerId(this);
+                    var secret = window.LOGIN_AS_SECRETS[id];
+                    if (id && secret) {
+                        window.open(window.LOGIN_AS_URL + '?id_customer=' + id + '&secret=' + secret, '_blank');
+                    }
                 });
             }
         });
